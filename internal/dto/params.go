@@ -1,13 +1,15 @@
-package server
+package dto
 
 import (
 	"fmt"
+	//"github.com/Paincake/avito-tech/internal/server"
 	"github.com/labstack/echo/v4"
 	"strconv"
 )
 
 const (
-	DefaultIdValue = -1
+	DefaultIdValue      = -1
+	TokenRoleContextKey = "Token"
 )
 
 type GetBannerParams struct {
@@ -15,16 +17,16 @@ type GetBannerParams struct {
 	TagId     int64
 	Limit     int
 	Offset    int
+	UseActive bool
 }
 
 func NewGetBannerParams(ctx echo.Context) (*GetBannerParams, error) {
 	var err error
-	var featureId int64
-	featureId = DefaultIdValue
-	var tagId int64
-	tagId = DefaultIdValue
-	limit := 0
-	offset := 50
+	featureId := int64(DefaultIdValue)
+	tagId := int64(DefaultIdValue)
+	limit := 50
+	offset := 0
+	useActive := true
 	param := ctx.QueryParams().Get("feature_id")
 	if param != "" {
 		featureId, err = strconv.ParseInt(param, 10, 64)
@@ -54,11 +56,19 @@ func NewGetBannerParams(ctx echo.Context) (*GetBannerParams, error) {
 		}
 	}
 
+	param, ok := ctx.Get(TokenRoleContextKey).(string)
+	if ok {
+		if param == "admin" {
+			useActive = false
+		}
+	}
+
 	return &GetBannerParams{
 		FeatureId: featureId,
 		TagId:     tagId,
 		Limit:     limit,
 		Offset:    offset,
+		UseActive: useActive,
 	}, nil
 }
 
@@ -66,15 +76,15 @@ type GetUserBannerParams struct {
 	TagId        int64
 	FeatureId    int64
 	LastRevision bool
+	UseActive    bool
 }
 
 func NewGetUserBannerParams(ctx echo.Context) (*GetUserBannerParams, error) {
 	var err error
-	var featureId int64
-	featureId = DefaultIdValue
-	var tagId int64
-	tagId = DefaultIdValue
+	featureId := int64(DefaultIdValue)
+	tagId := int64(DefaultIdValue)
 	lastRevision := false
+	useActive := true
 	param := ctx.QueryParams().Get("feature_id")
 	if param == "" {
 		return nil, fmt.Errorf("missed required query param: feature_id")
@@ -100,11 +110,17 @@ func NewGetUserBannerParams(ctx echo.Context) (*GetUserBannerParams, error) {
 			return nil, fmt.Errorf("invalid use_last_revision format")
 		}
 	}
-
+	param, ok := ctx.Get(TokenRoleContextKey).(string)
+	if ok {
+		if param == "admin" {
+			useActive = false
+		}
+	}
 	return &GetUserBannerParams{
 		TagId:        tagId,
 		FeatureId:    featureId,
 		LastRevision: lastRevision,
+		UseActive:    useActive,
 	}, nil
 }
 
@@ -116,7 +132,7 @@ func NewPatchBannerIdParams(ctx echo.Context) (*PatchBannerIdParams, error) {
 	var err error
 	var bannerId int64
 	bannerId = DefaultIdValue
-	param := ctx.QueryParams().Get("banner_id")
+	param := ctx.Param("id")
 	if param == "" {
 		return nil, fmt.Errorf("missed required query param: banner_id")
 	} else {
@@ -139,7 +155,7 @@ func NewDeleteBannerIdParams(ctx echo.Context) (*DeleteBannerIdParams, error) {
 	var err error
 	var bannerId int64
 	bannerId = DefaultIdValue
-	param := ctx.QueryParams().Get("banner_id")
+	param := ctx.Param("id")
 	if param == "" {
 		return nil, fmt.Errorf("missed required query param: delete_id")
 	} else {
